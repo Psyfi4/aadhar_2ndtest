@@ -1,3 +1,9 @@
+# main.py
+
+import cv2                                # Needed for camera and image display
+from face_recognition import AadhaarFaceSystem   # Import your main class
+# OR: from aadhaar_face_system import AadhaarFaceSystem  # If your class is in another file
+
 def main():
     system = AadhaarFaceSystem()
     

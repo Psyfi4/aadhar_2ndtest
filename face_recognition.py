@@ -82,24 +82,12 @@ def recognize_face(
     return recognized_faces
 
 
-def get_person_details(conn: sqlite3.Connection, aadhaar_number: str) -> Optional[Dict]:
-    """Retrieve complete person details from database"""
-    if not aadhaar_number:
-        return None
+def get_person_details(conn, aadhaar_number):
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT name, date_of_birth, gender, address, aadhaar_photo_path 
-        FROM persons WHERE aadhaar_number = ?
-    ''', (aadhaar_number,))
-    result = cursor.fetchone()
-    if result:
-        return {
-            'name': result[0],
-            'date_of_birth': result[1],
-            'gender': result[2],
-            'address': result[3],
-            'aadhaar_photo_path': result[4]
-        }
+    cursor.execute('SELECT name, date_of_birth, gender, address, aadhaar_photo_path FROM persons WHERE aadhaar_number = ?', (aadhaar_number,))
+    row = cursor.fetchone()
+    if row:
+        return {'name': row[0], 'date_of_birth': row[1], 'gender': row[2], 'address': row[3], 'aadhaar_photo_path': row[4]}
     return None
 
 
@@ -114,3 +102,4 @@ def log_recognition(conn: sqlite3.Connection, aadhaar_number: str, confidence: f
     ''', (aadhaar_number, datetime.utcnow().isoformat(), float(confidence)))
     conn.commit()
 # ...existing code...pip install opencv-python-headless==4.8.1.78
+
