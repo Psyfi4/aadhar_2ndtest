@@ -313,19 +313,13 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
 
   try {
     const payload = {
-      // server expects "image" key in your /register_api currently; we send full frame there
-      image: fullSnapshot,
-      // include the crop as optional helper for server or UI (server can ignore)
-      image_crop: capturedCrop,
-      aadhaar_number: aadhaar,
-      name: name,
-      date_of_birth: dob,
-      gender: gender,
-      address: address,
-      aadhaar_photo: aadhaarPhotoDataUrl  // may be null if user didn't upload
-    };
+  image: fullSnapshot,
+  image_crop: capturedCrop,
+  aadhaar: aadhaar,
+  name: name
+};
 
-    const resp = await fetch('/register_api', {
+    const resp = await fetch('/api/register', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
