@@ -38,7 +38,7 @@ os.makedirs(os.path.join("static", "registered_faces"), exist_ok=True)
 os.makedirs(os.path.join("static", "aadhaar_photos"), exist_ok=True)
 
 # single global instance
-system = AadhaarFaceSystem(debug=True)
+system = AadhaarFaceSystem()
 
 # Regex to match data URLs
 _DATAURL_RE = re.compile(r'data:(image/[^;]+);base64,(.*)$', re.I)
