@@ -67,15 +67,15 @@ class AadhaarSystem:
 
     # ---------- RECOGNIZE ----------
     def recognize(self, img):
-    faces = self.app.get(img)
-    results = []
+        faces = self.app.get(img)
+        results = []
 
-    for f in faces:
-        emb = f.embedding.astype(np.float32)
-        emb = emb / (np.linalg.norm(emb) + 1e-10)
+        for f in faces:
+            emb = f.embedding.astype(np.float32)
+            emb = emb / (np.linalg.norm(emb) + 1e-10)
 
-        best_idx = -1
-        best_score = -1
+            best_idx = -1 
+            best_score = -1
 
         for i, k in enumerate(self.known_embeddings):
             k = k / (np.linalg.norm(k) + 1e-10)
@@ -85,7 +85,7 @@ class AadhaarSystem:
                 best_score = sim
                 best_idx = i
 
-        # 🔥 tuned thresholds
+            #  tuned thresholds
         if best_score > 0.5:
             meta = self.known_meta[best_idx]
             label = meta["name"]
@@ -103,4 +103,4 @@ class AadhaarSystem:
             "confidence": round(best_score, 3)
         })
 
-    return results
+        return results
