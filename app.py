@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 import base64, cv2, numpy as np
 from system import AadhaarSystem
-from ocr import extract_aadhaar
+from aadhaar_ocr import extract_aadhaar
+from aadhaar_ocr import extract_aadhaar_details
 
 app = Flask(__name__)
 system = AadhaarSystem()
@@ -28,13 +29,29 @@ def recognize_page():
 def register():
     data = request.json
     img = decode(data["image"])
-    aadhaar = data.get("aadhaar")
-    if not aadhaar:
-    aadhaar = extract_aadhaar(img)
-    name = data["name"]
 
-    ok,msg = system.register(img,aadhaar,name)
-    return jsonify({"ok":ok,"msg":msg})
+    def preprocess(img):
+        import cv2
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.bilateralFilter(gray, 9, 75, 75)
+        _, th = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        return th
+
+# OCR extraction
+    ocr_data = extract_aadhaar_details(img)
+
+    aadhaar = data.get("aadhaar") or ocr_data["aadhaar_number"]
+    name = data.get("name") or ocr_data["name"]
+
+    ok, msg = system.register(img, aadhaar, name)
+
+    ocr_data = extract_aadhaar_details(preprocess(img))
+
+    return jsonify({
+        "ok": ok,
+        "msg": msg,
+        "ocr": ocr_data
+})
 
 # -------- RECOGNIZE API --------
 @app.route("/api/recognize", methods=["POST"])
