@@ -98,3 +98,6 @@ def extract_aadhaar_details(img):
         "gender": gender,
         "raw_text": full_text
     }
+
+def extract_aadhaar(img):
+    return extract_aadhaar_details(img)["aadhaar_number"]

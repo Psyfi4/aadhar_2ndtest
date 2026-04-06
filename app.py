@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 import base64, cv2, numpy as np
 from system import AadhaarSystem
-from aadhaar_ocr import extract_aadhaar
 from aadhaar_ocr import extract_aadhaar_details
 
 app = Flask(__name__)
@@ -24,6 +23,24 @@ def register_page():
 def recognize_page():
     return render_template("recognize.html")
 
+@app.route("/detect_preview", methods=["POST"])
+def detect_preview():
+    data = request.json
+    img = decode(data["image"])
+
+    faces = system.app.get(img)
+
+    results = []
+    for f in faces:
+        x1, y1, x2, y2 = map(int, f.bbox)
+        results.append({
+            "bbox": [x1, y1, x2, y2],
+            "w": x2 - x1,
+            "h": y2 - y1
+        })
+
+    return jsonify({"faces": results})
+
 # -------- REGISTER API --------
 @app.route("/api/register", methods=["POST"])
 def register():
@@ -39,6 +56,7 @@ def register():
 
 # OCR extraction
     ocr_data = extract_aadhaar_details(img)
+    aadhaar = ocr_data["aadhaar_number"]
 
     aadhaar = data.get("aadhaar") or ocr_data["aadhaar_number"]
     name = data.get("name") or ocr_data["name"]
