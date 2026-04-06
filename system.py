@@ -67,31 +67,40 @@ class AadhaarSystem:
 
     # ---------- RECOGNIZE ----------
     def recognize(self, img):
-        faces = self.app.get(img)
-        results = []
+    faces = self.app.get(img)
+    results = []
 
-        for f in faces:
-            emb = f.embedding.astype(np.float32)
-            emb /= np.linalg.norm(emb)
+    for f in faces:
+        emb = f.embedding.astype(np.float32)
+        emb = emb / (np.linalg.norm(emb) + 1e-10)
 
-            best = -1
-            best_score = 0
+        best_idx = -1
+        best_score = -1
 
-            for i,k in enumerate(self.known_embeddings):
-                k = k/np.linalg.norm(k)
-                sim = float(np.dot(emb,k))
-                if sim > best_score:
-                    best_score = sim
-                    best = i
+        for i, k in enumerate(self.known_embeddings):
+            k = k / (np.linalg.norm(k) + 1e-10)
+            sim = float(np.dot(emb, k))  # cosine similarity
 
-            if best_score > 0.4:
-                meta = self.known_meta[best]
-                results.append({
-                    "name": meta["name"],
-                    "aadhaar": meta["aadhaar"],
-                    "confidence": best_score
-                })
-            else:
-                results.append({"name":"Unknown","aadhaar":None,"confidence":best_score})
+            if sim > best_score:
+                best_score = sim
+                best_idx = i
 
-        return results
+        # 🔥 tuned thresholds
+        if best_score > 0.5:
+            meta = self.known_meta[best_idx]
+            label = meta["name"]
+            aadhaar = meta["aadhaar"]
+        elif best_score > 0.35:
+            label = "Uncertain"
+            aadhaar = None
+        else:
+            label = "Unknown"
+            aadhaar = None
+
+        results.append({
+            "name": label,
+            "aadhaar": aadhaar,
+            "confidence": round(best_score, 3)
+        })
+
+    return results
