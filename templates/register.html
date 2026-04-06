@@ -258,7 +258,7 @@ function startDetectionLoop() {
     } catch (err) {
       console.error('detect_preview error', err);
     }
-  }, 600);
+  }, 1500);
 }
 
 /* ======== capture & preview crop ======== */
@@ -294,6 +294,7 @@ document.getElementById('captureBtn').addEventListener('click', async () => {
 /* ======== registration submit ======== */
 /* ======== registration submit (PATCHED) ======== */
 document.getElementById('submitRegistrationBtn').addEventListener('click', async () => {
+  try {
   const aadhaar = document.getElementById('aadhaar_input').value.trim();
   const name = document.getElementById('name_input').value.trim();
   const dob = document.getElementById('dob_input').value.trim();
@@ -305,18 +306,20 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
   // get the last-local crop preview (if any) and the full snapshot
   const capturedCrop = facePreviewImg.dataset.captured || null;
   // ALWAYS send the full frame for server registration/detection
-  const fullSnapshot = getSnapshotDataUrl(0.95);
+  const fullSnapshot = facePreviewImg.dataset.captured;
 
   if (!fullSnapshot) { alert('Could not capture camera frame.'); return; }
 
   document.getElementById('regStatus').innerText = 'Registering...';
 
-  try {
-    const payload = {
-  image: fullSnapshot,
-  image_crop: capturedCrop,
+  const payload = {
+  image: facePreviewImg.dataset.full,   
   aadhaar: aadhaar,
-  name: name
+  name: name,
+  dob: dob,
+  gender: gender,
+  address: address,
+  aadhaar_photo: aadhaarPhotoDataUrl       
 };
 
     const resp = await fetch('/api/register', {
@@ -341,8 +344,8 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
     }
 
     // if server returned JSON success structure
-    if (j && j.success) {
-      document.getElementById('regStatus').innerText = 'Registration success: ' + (j.message || '');
+    if (j && j.ok) {
+      document.getElementById('regStatus').innerText = 'Registration success: ' + (j.msg || '');
       // optionally clear preview/crops
       facePreviewImg.dataset.captured = '';
       facePreviewImg.style.display = 'none';
@@ -356,8 +359,9 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
   } catch (err) {
     console.error('register_api error', err);
     document.getElementById('regStatus').innerText = 'Registration error: ' + (err && err.message ? err.message : err);
-  }
-});
+    }
+  });
+
 
 document.getElementById('aadhaarPhotoInput').addEventListener('change', async (ev) => {
   const f = ev.target.files && ev.target.files[0];

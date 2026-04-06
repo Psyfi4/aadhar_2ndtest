@@ -1,54 +1,83 @@
 <!doctype html>
 <html>
 <head>
-  <title>Live Recognition</title>
-  <style>
-    body { background:#111; color:white; font-family:sans-serif; text-align:center; }
-    video { width:640px; border-radius:10px; }
-    canvas { position:absolute; }
-    #box { margin-top:10px; }
-  </style>
+<style>
+body { background:#111; color:white; text-align:center; }
+#wrap { position:relative; display:inline-block; }
+video { width:640px; }
+canvas { position:absolute; top:0; left:0; }
+</style>
 </head>
+
 <body>
+<h2>Live Recognition</h2>
 
-<h2>Live Face Recognition</h2>
+<div id="wrap">
+  <video id="video" autoplay></video>
+  <canvas id="canvas"></canvas>
+</div>
 
-<video id="video" autoplay></video><br>
 <button onclick="start()">Start Camera</button>
-
-<pre id="out"></pre>
 
 <script>
 const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 async function start(){
   const stream = await navigator.mediaDevices.getUserMedia({video:true});
   video.srcObject = stream;
+  await new Promise(r => setTimeout(r,1000));
   loop();
 }
 
 function snap(){
+  if (!video.videoWidth) return null;
   const c = document.createElement("canvas");
   c.width = video.videoWidth;
   c.height = video.videoHeight;
   c.getContext("2d").drawImage(video,0,0);
-  return c.toDataURL("image/jpeg",0.7);
+  return c.toDataURL("image/jpeg");
 }
 
 async function loop(){
+  const img = snap();
+  if(!img){ setTimeout(loop,1000); return; }
+
   const res = await fetch("/api/recognize",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({image:snap()})
+    body:JSON.stringify({image: img})
   });
 
   const data = await res.json();
-  document.getElementById("out").innerText =
-    JSON.stringify(data,null,2);
+  draw(data);
 
-  setTimeout(loop,700);
+  setTimeout(loop,1200);
+}
+
+function draw(faces){
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  faces.forEach(f=>{
+    const [x1,y1,x2,y2] = f.bbox;
+
+    ctx.strokeStyle = f.name==="Unknown"?"red":"lime";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(x1,y1-40,260,40);
+
+    ctx.fillStyle = "white";
+    ctx.font="14px Arial";
+
+    ctx.fillText(`${f.name} (${f.confidence})`, x1+5, y1-25);
+    ctx.fillText(`DOB: ${f.dob||"-"} ${f.gender||""}`, x1+5, y1-10);
+  });
 }
 </script>
-
 </body>
 </html>

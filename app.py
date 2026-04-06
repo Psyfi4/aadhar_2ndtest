@@ -7,9 +7,18 @@ app = Flask(__name__)
 system = AadhaarSystem()
 
 def decode(img_b64):
-    img = base64.b64decode(img_b64.split(",")[1])
-    arr = np.frombuffer(img, np.uint8)
-    return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    try:
+        if not img_b64:
+            return None
+        if "," in img_b64:
+            img_b64 = img_b64.split(",")[1]
+        img = base64.b64decode(img_b64)
+        arr = np.frombuffer(img, np.uint8)
+        if arr.size == 0:
+            return None
+        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    except:
+        return None
 
 @app.route("/")
 def home():
@@ -23,61 +32,53 @@ def register_page():
 def recognize_page():
     return render_template("recognize.html")
 
-@app.route("/detect_preview", methods=["POST"])
-def detect_preview():
-    data = request.json
-    img = decode(data["image"])
-
-    faces = system.app.get(img)
-
-    results = []
-    for f in faces:
-        x1, y1, x2, y2 = map(int, f.bbox)
-        results.append({
-            "bbox": [x1, y1, x2, y2],
-            "w": x2 - x1,
-            "h": y2 - y1
-        })
-
-    return jsonify({"faces": results})
-
-# -------- REGISTER API --------
 @app.route("/api/register", methods=["POST"])
 def register():
     data = request.json
-    img = decode(data["image"])
 
-    def preprocess(img):
-        import cv2
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.bilateralFilter(gray, 9, 75, 75)
-        _, th = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-        return th
+    face_img = decode(data.get("image"))
+    aadhaar_img = decode(data.get("aadhaar_photo"))
 
-# OCR extraction
-    ocr_data = extract_aadhaar_details(img)
-    aadhaar = ocr_data["aadhaar_number"]
+    print("FACE IMG:", face_img is not None)
+    print("AADHAAR IMG:", aadhaar_img is not None)
 
-    aadhaar = data.get("aadhaar") or ocr_data["aadhaar_number"]
-    name = data.get("name") or ocr_data["name"]
+    ocr = {}
+    if aadhaar_img is not None:
+        ocr = extract_aadhaar_details(aadhaar_img)
 
-    ok, msg = system.register(img, aadhaar, name)
+    aadhaar = data.get("aadhaar") or ocr.get("aadhaar_number")
+    name = data.get("name") or ocr.get("name")
 
-    ocr_data = extract_aadhaar_details(preprocess(img))
+    print("AADHAAR:", aadhaar)
+    print("NAME:", name)
 
-    return jsonify({
-        "ok": ok,
-        "msg": msg,
-        "ocr": ocr_data
-})
+    if face_img is None:
+        return jsonify({"ok": False, "msg": "Face image missing"}), 400
 
-# -------- RECOGNIZE API --------
+    if not aadhaar:
+        return jsonify({"ok": False, "msg": "Aadhaar missing"}), 400
+
+    ok, msg = system.register(
+        face_img,
+        aadhaar,
+        name,
+        data.get("dob"),
+        data.get("gender"),
+        data.get("address")
+    )
+
+    return jsonify({"ok": ok, "msg": msg, "ocr": ocr})
+
 @app.route("/api/recognize", methods=["POST"])
 def recognize():
     data = request.json
-    img = decode(data["image"])
-    res = system.recognize(img)
-    return jsonify(res)
+    img = decode(data.get("image"))
+
+    if img is None:
+        return jsonify({"error": "Invalid image"}), 400
+
+    return jsonify(system.recognize(img))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    print("Starting Flask server...")
+    app.run(host="0.0.0.0", port=5000, debug=True)
