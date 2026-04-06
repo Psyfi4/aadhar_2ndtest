@@ -7,3 +7,4 @@ onnxruntime
 easyocr
 torch
 torchvision
+scikit-image

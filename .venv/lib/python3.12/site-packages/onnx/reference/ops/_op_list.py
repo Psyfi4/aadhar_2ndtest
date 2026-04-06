@@ -38,6 +38,7 @@ __all__ = [
     "BatchNormalization_9",
     "BatchNormalization_14",
     "Bernoulli",
+    "BitCast",
     "BitShift",
     "BitwiseAnd",
     "BitwiseNot",
@@ -68,6 +69,7 @@ __all__ = [
     "ConvTranspose",
     "Cos",
     "Cosh",
+    "CumProd",
     "CumSum",
     "DeformConv",
     "DepthToSpace",
@@ -291,6 +293,7 @@ from onnx.reference.ops.op_batch_normalization import (
     BatchNormalization_14,
 )
 from onnx.reference.ops.op_bernoulli import Bernoulli
+from onnx.reference.ops.op_bitcast import BitCast
 from onnx.reference.ops.op_bitshift import BitShift
 from onnx.reference.ops.op_bitwise_and import BitwiseAnd
 from onnx.reference.ops.op_bitwise_not import BitwiseNot
@@ -319,6 +322,7 @@ from onnx.reference.ops.op_conv_integer import ConvInteger
 from onnx.reference.ops.op_conv_transpose import ConvTranspose
 from onnx.reference.ops.op_cos import Cos
 from onnx.reference.ops.op_cosh import Cosh
+from onnx.reference.ops.op_cum_prod import CumProd
 from onnx.reference.ops.op_cum_sum import CumSum
 from onnx.reference.ops.op_deform_conv import DeformConv
 from onnx.reference.ops.op_depth_to_space import DepthToSpace

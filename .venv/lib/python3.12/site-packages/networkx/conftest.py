@@ -108,13 +108,18 @@ def set_warnings():
         message=r"Exited (at iteration \d+|postprocessing) with accuracies.*",
     )
     warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        message=r"The hashes produced for ",
+    )
+    warnings.filterwarnings(
         "ignore", category=DeprecationWarning, message="\n\nThe `normalized`"
     )
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message="\n\n`compute_v_structures"
+        "ignore", category=DeprecationWarning, message="maybe_regular_expander"
     )
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message="Keyword argument 'link'"
+        "ignore", category=DeprecationWarning, message="metric_closure is deprecated"
     )
 
 
@@ -187,7 +192,6 @@ needs_numpy = [
     "algorithms/non_randomness.py",
     "algorithms/polynomials.py",
     "algorithms/shortest_paths/dense.py",
-    "algorithms/structuralholes.py",
     "algorithms/tree/mst.py",
     "drawing/nx_latex.py",
     "generators/expanders.py",
@@ -212,12 +216,12 @@ needs_scipy = [
     "algorithms/centrality/subgraph_alg.py",
     "algorithms/communicability_alg.py",
     "algorithms/community/divisive.py",
+    "algorithms/community/bipartitions.py",
     "algorithms/distance_measures.py",
     "algorithms/link_analysis/hits_alg.py",
     "algorithms/link_analysis/pagerank_alg.py",
     "algorithms/node_classification.py",
     "algorithms/similarity.py",
-    "algorithms/structuralholes.py",
     "algorithms/tree/mst.py",
     "algorithms/walks.py",
     "convert_matrix.py",

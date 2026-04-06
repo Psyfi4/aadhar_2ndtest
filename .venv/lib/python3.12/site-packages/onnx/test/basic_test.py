@@ -26,13 +26,12 @@ def _simple_model() -> onnx.ModelProto:
 
 
 def _simple_tensor() -> onnx.TensorProto:
-    tensor = onnx.helper.make_tensor(
+    return onnx.helper.make_tensor(
         name="test-tensor",
         data_type=onnx.TensorProto.FLOAT,
         dims=(2, 3, 4),
         vals=[x + 0.5 for x in range(24)],
     )
-    return tensor
 
 
 @parameterized.parameterized_class(
@@ -233,7 +232,7 @@ class TestBasicFunctions(unittest.TestCase):
         model_repr = repr(model)
         self.assertEqual(
             model_repr,
-            "ModelProto(ir_version=12, producer_name='onnx-test', graph=GraphProto('test'))",
+            "ModelProto(ir_version=13, producer_name='onnx-test', graph=GraphProto('test'))",
         )
 
         text_model = """
