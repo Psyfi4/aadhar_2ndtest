@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 import base64, cv2, numpy as np
 from system import AadhaarSystem
+from ocr import extract_aadhaar
 
 app = Flask(__name__)
 system = AadhaarSystem()
@@ -27,7 +28,9 @@ def recognize_page():
 def register():
     data = request.json
     img = decode(data["image"])
-    aadhaar = data["aadhaar"]
+    aadhaar = data.get("aadhaar")
+    if not aadhaar:
+    aadhaar = extract_aadhaar(img)
     name = data["name"]
 
     ok,msg = system.register(img,aadhaar,name)
