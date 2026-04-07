@@ -7,7 +7,7 @@ class AadhaarSystem:
         self._create_tables()
 
         self.app = FaceAnalysis(name="buffalo_l")
-        self.app.prepare(ctx_id=0, det_size=(320,320))  # faster
+        self.app.prepare(ctx_id=0, det_size=(640,640), det_thresh=0.3)  # faster
 
         self.known_embeddings = []
         self.known_meta = []
@@ -49,6 +49,7 @@ class AadhaarSystem:
 
     def register(self, img, aadhaar, name, dob=None, gender=None, address=None):
         faces = self.app.get(img)
+        print("DEBUG: Faces detected:", len(faces))
         if not faces:
             return False, "No face detected"
 

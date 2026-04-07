@@ -19,6 +19,27 @@ def decode(img_b64):
         return cv2.imdecode(arr, cv2.IMREAD_COLOR)
     except:
         return None
+    
+
+@app.route("/detect_preview", methods=["POST"])
+def detect_preview():
+    data = request.get_json()
+
+    img = decode(data["image"])   
+
+    if img is None:
+        return jsonify({"faces": []})
+
+    faces = system.app.get(img)
+
+    print("DEBUG DETECT:", len(faces))
+
+    result = []
+    for f in faces:
+        x1, y1, x2, y2 = map(int, f.bbox)
+        result.append({"bbox": [x1, y1, x2, y2]})
+
+    return jsonify({"faces": result})
 
 @app.route("/")
 def home():
@@ -66,8 +87,9 @@ def register():
         data.get("gender"),
         data.get("address")
     )
-
+    
     return jsonify({"ok": ok, "msg": msg, "ocr": ocr})
+    print("DEBUG: face_img shape:", None if face is None else face.shape)
 
 @app.route("/api/recognize", methods=["POST"])
 def recognize():
@@ -81,4 +103,6 @@ def recognize():
 
 if __name__ == "__main__":
     print("Starting Flask server...")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    
+    

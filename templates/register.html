@@ -258,37 +258,54 @@ function startDetectionLoop() {
     } catch (err) {
       console.error('detect_preview error', err);
     }
-  }, 1500);
+  }, 500);
 }
 
 /* ======== capture & preview crop ======== */
-document.getElementById('captureBtn').addEventListener('click', async () => {
-  if (!running) { alert('Start camera first'); return; }
-  // take snapshot and crop using lastDetect bbox (server detection) if available
-  const snapData = getSnapshotDataUrl(0.9);
-  if (!lastDetect || !lastDetect.faces || lastDetect.faces.length === 0) {
-    alert('No face detected — move so the face is inside the guide and try again.');
+document.getElementById('captureBtn').addEventListener('click', () => {
+  if (!running) {
+    alert('Start camera first');
     return;
   }
+
+  const snap = getSnapshotDataUrl(1.0); // full quality
+
+  // store FULL FRAME (IMPORTANT)
+  facePreviewImg.dataset.full = snap;
+
+  if (!lastDetect || !lastDetect.faces || lastDetect.faces.length === 0) {
+    alert('No face detected');
+    return;
+  }
+
   const f = lastDetect.faces[0];
-  const x1 = Math.max(0, f.bbox[0]), y1 = Math.max(0, f.bbox[1]);
-  const x2 = Math.min(video.videoWidth, f.bbox[2]), y2 = Math.min(video.videoHeight, f.bbox[3]);
-  // create canvas crop
+  const x1 = f.bbox[0], y1 = f.bbox[1];
+  const x2 = f.bbox[2], y2 = f.bbox[3];
+
   const img = new Image();
+
   img.onload = () => {
     const c = document.createElement('canvas');
-    const cw = x2 - x1, ch = y2 - y1;
-    c.width = cw; c.height = ch;
+    const w = x2 - x1;
+    const h = y2 - y1;
+
+    c.width = w;
+    c.height = h;
+
     const ctx = c.getContext('2d');
-    ctx.drawImage(img, x1, y1, cw, ch, 0, 0, cw, ch);
-    const dataURL = c.toDataURL('image/jpeg', 0.9);
-    facePreviewMsg.style.display = 'none';
-    facePreviewImg.style.display = 'block';
-    facePreviewImg.src = dataURL;
-    // store last captured dataurl to send on registration
-    facePreviewImg.dataset.captured = dataURL;
+    ctx.drawImage(img, x1, y1, w, h, 0, 0, w, h);
+
+    const cropped = c.toDataURL("image/jpeg", 0.95);
+
+    facePreviewImg.src = cropped;
+    facePreviewImg.style.display = "block";
+    facePreviewMsg.style.display = "none";
+
+    // store cropped separately
+    facePreviewImg.dataset.captured = cropped;
   };
-  img.src = snapData;
+
+  img.src = snap; // ✅ FIXED
 });
 
 /* ======== registration submit ======== */
@@ -306,7 +323,7 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
   // get the last-local crop preview (if any) and the full snapshot
   const capturedCrop = facePreviewImg.dataset.captured || null;
   // ALWAYS send the full frame for server registration/detection
-  const fullSnapshot = facePreviewImg.dataset.captured;
+  const fullSnapshot = facePreviewImg.dataset.full;
 
   if (!fullSnapshot) { alert('Could not capture camera frame.'); return; }
 
