@@ -169,7 +169,7 @@ class AadhaarSystem:
         "gender": meta["gender"],
         "address": meta["address"],
         "confidence": round(best_score, 3),
-        "bbox": [x1, y1, x2, y2],   # ✅ NOW CORRECT
+        "bbox": [x1, y1, x2, y2],   # NOW CORRECT
         "photo": base64.b64encode(meta["photo"]).decode() if meta.get("photo") else None,
         "aadhaar_photo": base64.b64encode(meta["aadhaar_photo"]).decode() if meta.get("aadhaar_photo") else None
     }]

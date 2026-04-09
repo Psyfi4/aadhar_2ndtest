@@ -119,7 +119,7 @@ function drawOverlayBox(box, color='lime') {
   ctx.fillText(`${box.right - box.left} x ${box.bottom - box.top}`, box.left, Math.max(16, box.top - 6));
 }
 
- // 🔥 slower (VERY IMPORTANT)
+ // slower (VERY IMPORTANT)
 
 /* ======== camera control ======== */
 /* ===== Robust camera start / stop / overlay sync ===== */
@@ -280,7 +280,7 @@ document.getElementById('captureBtn').addEventListener('click', () => {
     return;
   }
 
-  // 🔥 STOP DETECTION HERE (CRITICAL FIX)
+  // STOP DETECTION HERE (CRITICAL FIX)
   detecting = false;
 
   if (detectInterval) {
@@ -311,7 +311,7 @@ document.getElementById('captureBtn').addEventListener('click', () => {
     facePreviewImg.style.display = "block";
     facePreviewMsg.style.display = "none";
 
-    // 🔥 STORE BOTH
+    // STORE BOTH
     facePreviewImg.dataset.captured = cropped;
     facePreviewImg.dataset.full = snap;
   };

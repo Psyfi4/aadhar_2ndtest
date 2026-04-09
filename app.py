@@ -105,13 +105,13 @@ def register():
         return jsonify({"ok": False, "msg": "Aadhaar missing"}), 400
 
     ok, msg = system.register(
-        orig_face,          # ✅ ORIGINAL IMAGE (FIXED)
+        orig_face,          # ORIGINAL IMAGE (FIXED)
         aadhaar,
         name,
         data.get("dob"),
         data.get("gender"),
         data.get("address"),
-        orig_aadhaar       # ✅ ORIGINAL AADHAAR IMAGE (FIXED)
+        orig_aadhaar       # ORIGINAL AADHAAR IMAGE (FIXED)
     )
 
     return jsonify({"ok": ok, "msg": msg})
