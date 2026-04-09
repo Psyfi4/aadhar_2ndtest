@@ -88,11 +88,11 @@ def register():
     if face_img is None:
         return jsonify({"ok": False, "msg": "Face image missing"}), 400
 
-    # 🔥 KEEP ORIGINAL (NO DISTORTION)
+    # KEEP ORIGINAL (NO DISTORTION)
     orig_face = face_img.copy()
     orig_aadhaar = aadhaar_img.copy() if aadhaar_img is not None else None
 
-    # 🔥 ONLY FOR DETECTION (NOT STORAGE)
+    # ONLY FOR DETECTION (NOT STORAGE)
     face_small = cv2.resize(face_img, (320, 320))
 
     # disable OCR (for stability)
