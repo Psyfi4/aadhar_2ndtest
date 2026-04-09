@@ -84,7 +84,7 @@ async function start(){
   video.srcObject = stream;
 
   video.onloadedmetadata = () => {
-    // 🔥 match real video resolution
+    // match real video resolution
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
@@ -97,7 +97,7 @@ async function start(){
   loop();
 }
 
-// 📸 SNAPSHOT (FIXED — NO RESIZE)
+// SNAPSHOT (FIXED — NO RESIZE)
 function snap(){
   if (!video.videoWidth) return null;
 
@@ -106,10 +106,10 @@ function snap(){
   c.height = video.videoHeight;
   c.getContext("2d").drawImage(video,0,0);
 
-  return c.toDataURL("image/jpeg", 0.6); // 🔥 SAME SIZE
+  return c.toDataURL("image/jpeg", 0.6); // SAME SIZE
 }
 
-// 🔁 LOOP (STABLE)
+// LOOP (STABLE)
 async function loop(){
   if (!running) return;
 
@@ -137,7 +137,7 @@ async function loop(){
     if(Array.isArray(data) && data.length > 0){
       draw(data);
     }
-    // 🔥 DO NOT CLEAR if empty → avoids flicker
+    // DO NOT CLEAR if empty → avoids flicker
 
   } catch(err){
     console.log("loop error", err);
@@ -146,7 +146,7 @@ async function loop(){
   setTimeout(loop,1200);
 }
 
-// 🎯 DRAW (FINAL FIX — NO SCALING)
+// DRAW (FINAL FIX — NO SCALING)
 function draw(faces){
   ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -170,13 +170,13 @@ function draw(faces){
     ctx.fillText(`DOB: ${f.dob||"-"} ${f.gender||""}`, x1+5, y1);
   });
 
-  // 🔥 UPDATE PANEL
+  // UPDATE PANEL
   if(faces.length > 0){
     updatePanel(faces[0]);
   }
 }
 
-// 📊 SIDE PANEL
+// SIDE PANEL
 function updatePanel(f){
   if(!f || f.name === "Unknown"){
     photo.style.display = "none";
