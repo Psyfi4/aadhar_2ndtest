@@ -2,19 +2,66 @@
 <html>
 <head>
 <style>
-body { background:#111; color:white; text-align:center; }
-#wrap { position:relative; display:inline-block; }
-video { width:640px; }
-canvas { position:absolute; top:0; left:0; }
+body { background:#111; color:white; text-align:center; font-family:Arial; }
+
+#container {
+  display:flex;
+  justify-content:center;
+  gap:30px;
+  margin-top:20px;
+}
+
+#wrap {
+  position:relative;
+}
+
+video { width:640px; height:auto; display:block; border-radius:10px; }
+canvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+
+#infoPanel {
+  width:250px;
+  background:#1a1a1a;
+  border-radius:10px;
+  padding:15px;
+  text-align:left;
+}
+
+#infoPanel img {
+  width:100%;
+  border-radius:8px;
+  margin-bottom:10px;
+}
+
+.label { color:#aaa; font-size:12px; }
+.value { font-size:14px; margin-bottom:8px; }
+
+.unknown {
+  color:red;
+  text-align:center;
+  margin-top:50px;
+}
 </style>
 </head>
 
 <body>
+
 <h2>Live Recognition</h2>
 
-<div id="wrap">
-  <video id="video" autoplay></video>
-  <canvas id="canvas"></canvas>
+<div id="container">
+
+  <!-- CAMERA -->
+  <div id="wrap">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- INFO PANEL -->
+  <div id="infoPanel">
+    <img id="photo" src="" style="display:none;">
+    <img id="aadhaarPhoto" style="display:none; margin-top:10px; border:2px solid #444;">
+    <div id="details"></div>
+  </div>
+
 </div>
 
 <button onclick="start()">Start Camera</button>
@@ -24,60 +71,142 @@ const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+const photo = document.getElementById("photo");
+const details = document.getElementById("details");
+
+let running = false;
+
 async function start(){
   const stream = await navigator.mediaDevices.getUserMedia({video:true});
   video.srcObject = stream;
+
+  video.onloadedmetadata = () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    canvas.style.width = video.clientWidth + "px";
+    canvas.style.height = video.clientHeight + "px";
+  };
+
   await new Promise(r => setTimeout(r,1000));
+  running = true;
   loop();
 }
 
 function snap(){
   if (!video.videoWidth) return null;
+
   const c = document.createElement("canvas");
   c.width = video.videoWidth;
   c.height = video.videoHeight;
   c.getContext("2d").drawImage(video,0,0);
-  return c.toDataURL("image/jpeg");
+  return c.toDataURL("image/jpeg", 0.6);
 }
 
 async function loop(){
-  const img = snap();
-  if(!img){ setTimeout(loop,1000); return; }
+  if (!running) return;
 
-  const res = await fetch("/api/recognize",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({image: img})
-  });
+  try {
+    const img = snap();
 
-  const data = await res.json();
-  draw(data);
+    if(!img){
+      setTimeout(loop,800);
+      return;
+    }
+
+    const res = await fetch("/api/recognize",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({image: img})
+    });
+
+    if(!res.ok){
+      setTimeout(loop,1200);
+      return;
+    }
+
+    const data = await res.json();
+
+    if(Array.isArray(data) && data.length > 0){
+      draw(data);
+    }
+    // DON'T CLEAR if empty → keeps last box visible
+
+  } catch(err){
+    console.log("loop error", err);
+  }
 
   setTimeout(loop,1200);
 }
 
 function draw(faces){
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   faces.forEach(f=>{
     const [x1,y1,x2,y2] = f.bbox;
 
-    ctx.strokeStyle = f.name==="Unknown"?"red":"lime";
+    ctx.strokeStyle = f.confidence > 0.7 ? "lime" : "orange";
     ctx.lineWidth = 2;
-    ctx.strokeRect(x1,y1,x2-x1,y2-y1);
+
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
     ctx.fillStyle = "black";
-    ctx.fillRect(x1,y1-40,260,40);
+    ctx.fillRect(x1, y1-50, 260, 50);
 
     ctx.fillStyle = "white";
     ctx.font="14px Arial";
 
-    ctx.fillText(`${f.name} (${f.confidence})`, x1+5, y1-25);
-    ctx.fillText(`DOB: ${f.dob||"-"} ${f.gender||""}`, x1+5, y1-10);
+    ctx.fillText(`${f.name} (${f.confidence})`, x1+5, y1-30);
+    ctx.fillText(`Aadhaar: ${f.aadhaar || "-"}`, x1+5, y1-15);
+    ctx.fillText(`DOB: ${f.dob||"-"} ${f.gender||""}`, x1+5, y1);
   });
+
+  // ALSO UPDATE SIDE PANEL (YOU FORGOT THIS)
+  if(faces.length > 0){
+    updatePanel(faces[0]);
+  }
+}
+
+function updatePanel(f){
+  if(!f || f.name === "Unknown"){
+    photo.style.display = "none";
+    details.innerHTML = `<div class="unknown">Unknown Person</div>`;
+    return;
+  }
+
+  // show photo
+  if(f.photo){
+    photo.src = "data:image/jpeg;base64," + f.photo;
+    photo.style.display = "block";
+  }
+
+  const aadhaarPhoto = document.getElementById("aadhaarPhoto");
+
+  if(f.aadhaar_photo){
+    aadhaarPhoto.src = "data:image/jpeg;base64," + f.aadhaar_photo;
+    aadhaarPhoto.style.display = "block";
+} else {
+    aadhaarPhoto.style.display = "none";
+}
+
+  details.innerHTML = `
+    <div class="label">Name</div>
+    <div class="value">${f.name}</div>
+
+    <div class="label">Aadhaar</div>
+    <div class="value">${f.aadhaar}</div>
+
+    <div class="label">DOB</div>
+    <div class="value">${f.dob}</div>
+
+    <div class="label">Gender</div>
+    <div class="value">${f.gender}</div>
+
+    <div class="label">Confidence</div>
+    <div class="value">${f.confidence}</div>
+  `;
 }
 </script>
+
 </body>
 </html>

@@ -78,6 +78,8 @@ let aadhaarPhotoDataUrl = null;
 let stream = null;
 let running = false;
 let detectInterval = null;
+let capturedImage = null;
+let detecting = true;
 let lastDetect = null; // store last server detection result
 
 // create or ensure overlay is positioned inside videoWrap and sized to match video
@@ -116,6 +118,8 @@ function drawOverlayBox(box, color='lime') {
   ctx.fillStyle = color;
   ctx.fillText(`${box.right - box.left} x ${box.bottom - box.top}`, box.left, Math.max(16, box.top - 6));
 }
+
+ // 🔥 slower (VERY IMPORTANT)
 
 /* ======== camera control ======== */
 /* ===== Robust camera start / stop / overlay sync ===== */
@@ -206,59 +210,60 @@ async function startCamera() {
 
 document.getElementById('stopCamBtn').addEventListener('click', stopCamera);
 function stopCamera() {
-  running = false;
-  // stop interval/detection
-  if (detectInterval) { clearInterval(detectInterval); detectInterval = null; }
-  // stop tracks
+
+  if (detectInterval) {
+    clearInterval(detectInterval);
+    detectInterval = null;
+  }
+  detecting = false;
+
+  // stop camera
   if (stream) {
-    try {
-      stream.getTracks().forEach(t => t.stop());
-    } catch (e) { console.warn('Error stopping tracks', e); }
+    stream.getTracks().forEach(t => t.stop());
     stream = null;
   }
-  // clear video src
-  try {
-    video.pause();
-    video.srcObject = null;
-  } catch (e) {}
+
   // clear overlay
   const ctx = overlay.getContext('2d');
   ctx.clearRect(0, 0, overlay.width, overlay.height);
-  faceDimsEl.innerText = '-';
-  console.log('Camera stopped.');
 }
 
 /* ======== detection loop ======== */
 function startDetectionLoop() {
-  if (!running) return;
-  // call detect every 450-700ms (adjust as needed)
   if (detectInterval) clearInterval(detectInterval);
+
+  detecting = true;
+
   detectInterval = setInterval(async () => {
+
+    if (!detecting) return;  //  STOP LOOP
+
     try {
       const dataUrl = getSnapshotDataUrl(0.6);
+
       const resp = await fetch('/detect_preview', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ image: dataUrl })
       });
+
       const j = await resp.json();
       lastDetect = j;
-      // server returns faces array with bbox x1,y1,x2,y2
+
       if (j.faces && j.faces.length > 0) {
         const f = j.faces[0];
         const left = f.bbox[0], top = f.bbox[1], right = f.bbox[2], bottom = f.bbox[3];
         drawOverlayBox({left, top, right, bottom}, 'lime');
-        faceDimsEl.innerText = `${f.w} x ${f.h}`;
       } else {
-        // clear overlay
         const ctx = overlay.getContext('2d');
         ctx.clearRect(0,0,overlay.width, overlay.height);
-        faceDimsEl.innerText = 'No face';
       }
+
     } catch (err) {
-      console.error('detect_preview error', err);
+      console.error('detect error', err);
     }
-  }, 500);
+
+  }, 700);
 }
 
 /* ======== capture & preview crop ======== */
@@ -268,14 +273,19 @@ document.getElementById('captureBtn').addEventListener('click', () => {
     return;
   }
 
-  const snap = getSnapshotDataUrl(1.0); // full quality
-
-  // store FULL FRAME (IMPORTANT)
-  facePreviewImg.dataset.full = snap;
+  const snap = getSnapshotDataUrl(1.0);
 
   if (!lastDetect || !lastDetect.faces || lastDetect.faces.length === 0) {
     alert('No face detected');
     return;
+  }
+
+  // 🔥 STOP DETECTION HERE (CRITICAL FIX)
+  detecting = false;
+
+  if (detectInterval) {
+    clearInterval(detectInterval);
+    detectInterval = null;
   }
 
   const f = lastDetect.faces[0];
@@ -301,43 +311,55 @@ document.getElementById('captureBtn').addEventListener('click', () => {
     facePreviewImg.style.display = "block";
     facePreviewMsg.style.display = "none";
 
-    // store cropped separately
+    // 🔥 STORE BOTH
     facePreviewImg.dataset.captured = cropped;
+    facePreviewImg.dataset.full = snap;
   };
 
-  img.src = snap; // ✅ FIXED
+  img.src = snap;
 });
 
 /* ======== registration submit ======== */
 /* ======== registration submit (PATCHED) ======== */
 document.getElementById('submitRegistrationBtn').addEventListener('click', async () => {
+
+  if (detectInterval) {
+    clearInterval(detectInterval);
+    detectInterval = null;
+  }
+  detecting = false;
+
   try {
-  const aadhaar = document.getElementById('aadhaar_input').value.trim();
-  const name = document.getElementById('name_input').value.trim();
-  const dob = document.getElementById('dob_input').value.trim();
-  const gender = document.getElementById('gender_input').value.trim();
-  const address = document.getElementById('address_input').value.trim();
+    const aadhaar = document.getElementById('aadhaar_input').value.trim();
+    const name = document.getElementById('name_input').value.trim();
+    const dob = document.getElementById('dob_input').value.trim();
+    const gender = document.getElementById('gender_input').value.trim();
+    const address = document.getElementById('address_input').value.trim();
 
-  if (!aadhaar || !name) { alert('Aadhaar number and Name are required'); return; }
+    if (!aadhaar || !name) {
+      alert('Aadhaar number and Name are required');
+      return;
+    }
 
-  // get the last-local crop preview (if any) and the full snapshot
-  const capturedCrop = facePreviewImg.dataset.captured || null;
-  // ALWAYS send the full frame for server registration/detection
-  const fullSnapshot = facePreviewImg.dataset.full;
+    const fullSnapshot = facePreviewImg.dataset.full || facePreviewImg.dataset.captured;
 
-  if (!fullSnapshot) { alert('Could not capture camera frame.'); return; }
+    if (!fullSnapshot) {
+      alert('Could not capture camera frame.');
+      detecting = true;
+      startDetectionLoop();
+      return;
+    }
+    document.getElementById('regStatus').innerText = 'Registering...';
 
-  document.getElementById('regStatus').innerText = 'Registering...';
-
-  const payload = {
-  image: facePreviewImg.dataset.full,   
-  aadhaar: aadhaar,
-  name: name,
-  dob: dob,
-  gender: gender,
-  address: address,
-  aadhaar_photo: aadhaarPhotoDataUrl       
-};
+    const payload = {
+      image: fullSnapshot,
+      aadhaar,
+      name,
+      dob,
+      gender,
+      address,
+      aadhaar_photo: aadhaarPhotoDataUrl
+    };
 
     const resp = await fetch('/api/register', {
       method: 'POST',
@@ -345,39 +367,23 @@ document.getElementById('submitRegistrationBtn').addEventListener('click', async
       body: JSON.stringify(payload)
     });
 
-    // read raw text, attempt to parse JSON for helpful debug messages
-    const text = await resp.text();
-    let j = null;
-    try { j = text ? JSON.parse(text) : null; } catch(e) {
-      // if JSON invalid, show raw response for debugging
-      console.warn('Non-JSON registration response:', text);
-    }
+    const j = await resp.json();
 
-    if (!resp.ok) {
-      const msg = (j && (j.message || j.error)) ? (j.message || j.error) : `HTTP ${resp.status} ${resp.statusText}`;
-      document.getElementById('regStatus').innerText = 'Registration failed: ' + msg;
-      console.error('register_api failed response:', j || text);
-      return;
-    }
-
-    // if server returned JSON success structure
-    if (j && j.ok) {
-      document.getElementById('regStatus').innerText = 'Registration success: ' + (j.msg || '');
-      // optionally clear preview/crops
-      facePreviewImg.dataset.captured = '';
-      facePreviewImg.style.display = 'none';
-      facePreviewMsg.style.display = 'block';
+    if (resp.ok && j.ok) {
+      document.getElementById('regStatus').innerText = 'Registration success!';
     } else {
-      // show server debug if available
-      const msg = j ? (j.message || JSON.stringify(j)) : text;
-      document.getElementById('regStatus').innerText = 'Registration failed: ' + (msg || 'unknown error');
-      console.error('register_api response:', j || text);
+      document.getElementById('regStatus').innerText =
+        'Registration failed: ' + (j.msg || 'Error');
     }
+
   } catch (err) {
-    console.error('register_api error', err);
-    document.getElementById('regStatus').innerText = 'Registration error: ' + (err && err.message ? err.message : err);
-    }
-  });
+    console.error(err);
+    document.getElementById('regStatus').innerText = 'Registration error';
+  } finally {
+    detecting = true;
+    startDetectionLoop();
+  }
+});
 
 
 document.getElementById('aadhaarPhotoInput').addEventListener('change', async (ev) => {
